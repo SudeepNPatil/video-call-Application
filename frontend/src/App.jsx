@@ -1,4 +1,4 @@
-// File: client/src/App.jsx
+
 import React, { useEffect, useRef, useState } from "react";
 import Peer from "peerjs";
 import io from "socket.io-client";
@@ -10,7 +10,7 @@ import {
   FaPhoneSlash,
 } from "react-icons/fa";
 
-const socket = io("https://video-call-application-2ybh.onrender.com");
+const socket = io("https://video-call-application-2ybh.onrender.com"); // Update this to your deployed backend URL
 
 function App() {
   const [peerId, setPeerId] = useState(null);
@@ -20,14 +20,17 @@ function App() {
   const [cameraOn, setCameraOn] = useState(true);
   const [inCall, setInCall] = useState(false);
   const [askedToJoin, setAskedToJoin] = useState(false);
-  const [permissionsGranted, setPermissionsGranted] = useState(false);
   const localVideoRef = useRef();
   const remoteVideoRef = useRef();
   const peerRef = useRef();
   const callRef = useRef();
 
   useEffect(() => {
-    const peer = new Peer();
+    const peer = new Peer(undefined, {
+      host: "peerjs.com",
+      secure: true,
+      port: 443,
+    });
     peerRef.current = peer;
 
     peer.on("open", (id) => {
@@ -35,13 +38,20 @@ function App() {
       console.log("My peer ID is: " + id);
     });
 
+    // We do NOT answer until we have a local stream
     peer.on("call", (call) => {
-      if (!stream) return;
-      call.answer(stream);
+      if (stream) {
+        call.answer(stream);
 
-      call.on("stream", (remoteStream) => {
-        remoteVideoRef.current.srcObject = remoteStream;
-      });
+        call.on("stream", (remoteStream) => {
+          remoteVideoRef.current.srcObject = remoteStream;
+        });
+
+        callRef.current = call;
+        setInCall(true);
+      } else {
+        console.warn("Received call before stream was ready");
+      }
     });
 
     socket.on("user-joined", (userId) => {
@@ -53,45 +63,41 @@ function App() {
     };
   }, [stream]);
 
+
   const handleAskToJoin = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      setPermissionsGranted(true);
       setStream(mediaStream);
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = mediaStream;
-      }
+      localVideoRef.current.srcObject = mediaStream;
       socket.emit("join-room", "video-room");
       setAskedToJoin(true);
     } catch (err) {
-      alert("Camera and Microphone permission is required to proceed.");
+      console.error("Permission denied or error:", err);
     }
   };
 
   const startCall = () => {
     if (!remotePeerId || !stream || !peerRef.current) return;
+
     const call = peerRef.current.call(remotePeerId, stream);
-    callRef.current = call;
 
     call.on("stream", (remoteStream) => {
       remoteVideoRef.current.srcObject = remoteStream;
     });
+
+    callRef.current = call;
     setInCall(true);
   };
 
   const toggleMic = () => {
     if (!stream) return;
-    stream.getAudioTracks().forEach((track) => {
-      track.enabled = !micOn;
-    });
+    stream.getAudioTracks()[0].enabled = !micOn;
     setMicOn(!micOn);
   };
 
   const toggleCamera = () => {
     if (!stream) return;
-    stream.getVideoTracks().forEach((track) => {
-      track.enabled = !cameraOn;
-    });
+    stream.getVideoTracks()[0].enabled = !cameraOn;
     setCameraOn(!cameraOn);
   };
 
@@ -103,8 +109,6 @@ function App() {
     setInCall(false);
     setAskedToJoin(false);
     setRemotePeerId(null);
-    setPermissionsGranted(false);
-    setStream(null);
   };
 
   return (
@@ -157,8 +161,8 @@ function App() {
           </div>
 
           <div className="flex gap-4">
-            <video ref={localVideoRef} autoPlay muted playsInline className="w-64 h-40 bg-black" />
-            <video ref={remoteVideoRef} autoPlay playsInline className="w-64 h-40 bg-black" />
+            <video ref={localVideoRef} autoPlay muted className="w-64 h-40 bg-black" />
+            <video ref={remoteVideoRef} autoPlay className="w-64 h-40 bg-black" />
           </div>
         </>
       )}

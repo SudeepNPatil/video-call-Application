@@ -10,7 +10,7 @@ import {
   FaPhoneSlash,
 } from "react-icons/fa";
 
-const socket = io("http://localhost:3001");
+const socket = io("https://video-call-application-2ybh.onrender.com");
 
 function App() {
   const [peerId, setPeerId] = useState(null);

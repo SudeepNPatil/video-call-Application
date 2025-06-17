@@ -27,9 +27,10 @@ function App() {
 
   useEffect(() => {
     const peer = new Peer(undefined, {
-      host: "peerjs.com",
-      secure: true,
+      host: "video-call-application-2ybh.onrender.com", // Your Render backend domain
       port: 443,
+      path: "/peerjs",
+      secure: true,
     });
     peerRef.current = peer;
 
@@ -173,3 +174,4 @@ function App() {
 }
 
 export default App;
+
